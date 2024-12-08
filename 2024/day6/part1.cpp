@@ -35,7 +35,8 @@ struct NextMove
     }
     
 };
-set<NextMove> turns;
+
+NextMove finalMove = NextMove{-1, -1, END};
 
 
 void printMove(NextMove move) {
@@ -49,12 +50,12 @@ bool isDirection(char direction) {
 bool indexOutOfBounds(pair<unsigned long long, unsigned long long> id, vector<string> map) {
     // cout << "Checking index: " << id.first << " " << id.second << endl;
     // cout << "IMax: " << map.size() << " Jmax: " << map[0].length() << endl; 
-    if (id.first == 0 || id.first == map.size()-1) {
+    if (id.first == -1 || id.first == map.size()) {
         // cout << "111111";
         return true;
     }
 
-    if (id.second == 0 || id.second == map[0].length()-1){
+    if (id.second == -1 || id.second == map[0].length()){
         // cout << "2222222";
         return true;
     }
@@ -83,6 +84,11 @@ void getNextMove(NextMove& move, vector<string> map) {
     switch (current)
     {
     case RIGHT:
+        if (indexOutOfBounds(nextRightId, map)) {
+            // cout << "Bad index" << endl;
+            move.direction=END;
+            return;
+        }
         // cout << " [hit right] ";
         nextValue = map[nextRightId.first][nextRightId.second];
         // If right is blocked then turn to down
@@ -96,6 +102,12 @@ void getNextMove(NextMove& move, vector<string> map) {
         }
         break;
     case DOWN:
+        if (indexOutOfBounds(nextDownId, map)) {
+            // cout << "Bad index" << endl;
+            move.direction=END;
+            return;
+        }
+
         nextValue = map[nextDownId.first][nextDownId.second];
         // If down is blocked then turn to left
         if (nextValue == BLOCK) {
@@ -108,6 +120,12 @@ void getNextMove(NextMove& move, vector<string> map) {
         }
         break;
     case LEFT:
+
+        if (indexOutOfBounds(nextLeftId, map)) {
+            // cout << "Bad index" << endl;
+            move.direction=END;
+            return;
+        }
         nextValue = map[nextLeftId.first][nextLeftId.second];
         // If left is blocked then turn to left
         if (nextValue == BLOCK) {
@@ -120,6 +138,11 @@ void getNextMove(NextMove& move, vector<string> map) {
         }
         break;
     case UP:
+        if (indexOutOfBounds(nextUpId, map)) {
+            // cout << "Bad index" << endl;
+            move.direction=END;
+            return;
+        }
         nextValue = map[nextUpId.first][nextUpId.second];
         // If up is blocked then turn to right
         if (nextValue == BLOCK) {
@@ -132,13 +155,9 @@ void getNextMove(NextMove& move, vector<string> map) {
         }
         break;
     default:
-        cout << "unknown character" << current;
-        unsigned long long a = 3/0;
+        throw exception();
     }
-    if (indexOutOfBounds(nextIndex, map)) {
-        // cout << "Bad index" << endl;
-        nextDirection = END;
-    }
+
     // cout << " next value  was[" << nextValue << "] ";
     move.i = nextIndex.first;
     move.j=nextIndex.second;
@@ -191,7 +210,7 @@ NextMove findStartngMove(vector<string> map){
 
 }
 
-bool isGameDeadlocked(vector<string> map, NextMove move) {
+bool isGameDeadlocked(const vector<string>& map, NextMove move) {
     set<tuple<unsigned long long,unsigned long long,char>> seen;
     do {
         if (seen.find(tuple(move.i, move.j, move.direction)) != seen.end()) {
@@ -209,16 +228,10 @@ bool isGameDeadlocked(vector<string> map, NextMove move) {
 
 
 int main (int argc, char* argv[]) {
-
     string filePath =argv[1];
     cout << "Running file: " << argv[1] << endl;
-    // if (input == "small") {
-    // auto map = makeMap(argv[1]);
-    // }
-    // else {
-    // assert(filePath == "2024/day6/small.in" || filePath == "2024/day6/big.in") ;
     auto map = makeMap(filePath);
-    // }
+
     NextMove firstMoveOriginal = findStartngMove(map);
     NextMove firstMove = firstMoveOriginal;
 
@@ -231,33 +244,33 @@ int main (int argc, char* argv[]) {
         
 
     } while (nextMove.direction != END);
-    cout << seen.size() << endl;
-
+    cout << "Game one result: " << seen.size() << endl;
 
     unsigned long long part2Result = 0;
-    //Part two faster
+    // Part two faster
     for (auto move: seen) {
         // cout << move.first << " " << move.second << endl;
         unsigned long long i = move.first;
         unsigned long long j = move.second;
+
         if (i==firstMoveOriginal.i && j==firstMoveOriginal.j) {
-                continue;
+            continue;
         }
         char currentChar = map[i][j];
         if (currentChar == BLOCK) {
-            throw exception();
             continue;
         }
         cout << "Game for " << "(" <<i << "," << j <<endl;
         auto mapCopy = map;
         mapCopy[i][j] = '#';
+
         if (isGameDeadlocked(mapCopy, firstMoveOriginal)) {
             part2Result ++;
             cout << "is bad" << endl;
         }
         else cout << "is good" << endl;
-
     }
+    
 
 
     // //Part two

@@ -7,6 +7,9 @@
 #include <vector>
 #include <functional>
 #include <cassert>
+#include <cmath>
+
+
 
 using namespace std;
 
@@ -18,64 +21,44 @@ const char FREE = '.';
 const char BLOCK = '#';
 const char END = 'e';
 
+std::ostream& operator<<(std::ostream& os, const std::pair<int, int>& point) {
+    os << "(" << point.first << ", " << point.second << ")";
+    return os;
+}
+
 template <typename Iterable>
 void printVector(const Iterable& v) {
     for (const auto& vv: v) {
-        cout <<"["<< vv <<"] ";
+        cout <<"["<< vv <<"] " << endl;
     }
     cout << endl;
 }
 
-struct Line {
-    unsigned long long target;
-    vector<unsigned long long> values;
-
-    // Method to return a printable string of the `values` vector
-    string getPrintableValue() const {
-        string s = "[";
-        for (size_t i = 0; i < values.size(); ++i) {
-            s += to_string(values[i]);
-            if (i != values.size() - 1) {
-                s += ", ";
-            }
-        }
-        s += "]";
-        return s;
-    }
-
-    // Friend function to overload <<
-    friend ostream& operator<<(ostream& os, const Line& line) {
-        os << "Line(target=" << line.target << ", values=" << line.getPrintableValue() << ")";
-        return os;
-    }
-};
-
-vector<Line> makeLines(string fileName) {
+vector<string> makeLines(string fileName) {
     string input;
     unsigned long long value;
     ifstream inputFile(fileName);
-    vector<Line> lines;
+    vector<string> lines;
+
 
     while(getline(inputFile, input)) {
-        vector<unsigned long long> numbers;
         
-        int colonPos = input.find(':');
-        istringstream iss(input.substr(colonPos+1));
-        string leftSubStr = input.substr(0, colonPos);
-        cout << "Left substr: " << leftSubStr << endl;
-        unsigned long long leftVal = stoul(leftSubStr);
-        
-        while(iss >> value){
-            numbers.push_back(value);
-        }
-        Line line{leftVal, numbers};
-        lines.push_back(line);
+        lines.push_back(input);
     }
     return lines;
 }
 
-void generateCombinations(string current, int n, vector<string>& results) {
-    string options = "*+";
+int getSize(unsigned lon) {
+    int digits = 0;
+    while (lon != 0) {
+        digits ++;
+        lon /= 10;
+    }
+    return digits;
+}
+
+void generateCombinations(string current, unsigned long long n, vector<string>& results) {
+    string options = "*+|";
 
     if (current.length() == n){
         results.push_back(current);
@@ -85,6 +68,20 @@ void generateCombinations(string current, int n, vector<string>& results) {
     for (auto c: options) {
         generateCombinations(current+c, n, results);
     }
+};
+
+void printPoint(pair<int,int>p){
+    cout << "(" << p.first << "," << p.second << ")";
+}
+
+bool isPointWithinBounds(pair<int, int>p, const vector<string>& map) {
+    int x=p.first;
+    int y=p.second;
+
+    return (
+        x>=0 && x <map.size() &&
+        y>=0 && y< map[0].size()
+    );
 }
 
 
@@ -94,39 +91,83 @@ int main (int argc, char* argv[]) {
     cout << "Running file: " << argv[1] << endl;
     auto lines = makeLines(filePath);
     printVector(lines);
-    unsigned long long output = 0;
+    
+    unordered_map<char, vector<pair<int, int>>> antenas;
 
-    // vector<char> operSet;
+    for (int i=0; i<lines.size(); i++) {
+        for (int j=0; j<lines[0].size(); j++) {
 
-    for (auto line: lines) {
-        int spaces = line.values.size() - 1;
-        cout << "Working a line: " << line << "With spaces: " << spaces << endl;
-        if (spaces == 0 && line.target == line.values[0]) {
-            output += line.target;
-        }
-            else {
-                vector<string> possibilities;
-                generateCombinations("", spaces, possibilities);
-                cout << "All possibilities: ";
-                printVector(possibilities);
-                for (string instructionLine:possibilities){
-                    unsigned long long result = line.values[0];
-                    for (int i=0; i<spaces; i++){
-                        unsigned long long currentValue = line.values[i+1];
-                        if (instructionLine[i] == '*') {
-                            result *= currentValue;
-                        }
-                        else {
-                            result += currentValue;
-                        }
-                    }
-                    if (result == line.target) {
-                        output += line.target;
-                        cout << "Worked combination: " << instructionLine;
-                        break;
-                    }
-                }
+            char c = lines[i][j];
+            if (c != '.') {
+                antenas[c].push_back(pair(i,j));
             }
+        }
     }
-    cout << "Output: " << output;
+
+    for (auto pair:antenas) {
+        cout << pair.first << ": ";
+        for (auto xySet:pair.second) {
+            cout << "(" << xySet.first << "," << xySet.second  << ") ";
+        }
+ 
+    }
+    cout << endl;
+    int result =0;
+    set<pair<int,int>> goods;
+
+    for (auto signAndCoords:antenas) {
+        char antenaSign = signAndCoords.first;
+        vector<pair<int,int>> cords = signAndCoords.second;
+        cout << "Going over antena sign: " << antenaSign << endl;
+
+
+
+        for (int i=0; i<cords.size(); i++) {
+            pair<int, int> firstPoint = cords[i]; 
+            for (int j=i+1; j<cords.size(); j++) {
+
+                pair<int, int> secondPoint = cords[j];
+                pair<int, int>newFirst = firstPoint;
+                pair<int, int> newSecond = secondPoint;
+                std::cout << "testing(" << firstPoint.first << "," << firstPoint.second << ") with(" << secondPoint.first << ", " << secondPoint.second << ")" << std::endl;
+
+                if (firstPoint.first < secondPoint.first) {
+                    newFirst.first -= abs(firstPoint.first-secondPoint.first);
+                    newSecond.first += abs(firstPoint.first-secondPoint.first);
+                }
+                else {
+                    newFirst.first += abs(firstPoint.first-secondPoint.first);
+                    newSecond.first -= abs(firstPoint.first-secondPoint.first);
+
+                }
+
+                if (firstPoint.second < secondPoint.second) {
+                    newFirst.second -= abs(firstPoint.second - secondPoint.second);
+                    newSecond.second += abs(firstPoint.second - secondPoint.second);
+                }
+                else {
+                    newFirst.second += abs(firstPoint.second - secondPoint.second);
+                    newSecond.second -= abs(firstPoint.second - secondPoint.second);
+                }
+
+                if (isPointWithinBounds(newFirst, lines)){
+                    goods.insert(newFirst);
+                    cout << "Good point 1:";
+                    printPoint(newFirst);
+                }
+                if (isPointWithinBounds(newSecond, lines)) {
+                    cout << " Good point 2:";
+                    printPoint(newSecond);
+                    goods.insert(newSecond);
+                }
+                cout << endl;
+            }
+            cout << endl;
+        }
+    }
+    // int result = goo
+    cout << "Result: " << goods.size() << endl;
+
+    printVector(goods);
+    
 }
